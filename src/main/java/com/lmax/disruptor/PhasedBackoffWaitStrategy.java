@@ -105,13 +105,15 @@ public final class PhasedBackoffWaitStrategy implements WaitStrategy
 
         do
         {
+            // 如果当前sequence大于指定的sequence，跳过
             if ((availableSequence = dependentSequence.get()) >= sequence)
             {
                 return availableSequence;
             }
-
+            // 自旋计数
             if (0 == --counter)
             {
+                // 超时计时
                 if (0 == startTime)
                 {
                     startTime = System.nanoTime();
@@ -121,10 +123,12 @@ public final class PhasedBackoffWaitStrategy implements WaitStrategy
                     long timeDelta = System.nanoTime() - startTime;
                     if (timeDelta > yieldTimeoutNanos)
                     {
+                        // 如果出让资源超时(自旋超时之后，又获取到cpu时间分片，仍然超时，则执行fallback策略)
                         return fallbackStrategy.waitFor(sequence, cursor, dependentSequence, barrier);
                     }
                     else if (timeDelta > spinTimeoutNanos)
                     {
+                        // 如果自旋超时，则主动释放cpu资源
                         Thread.yield();
                     }
                 }

@@ -34,7 +34,7 @@ public final class YieldingWaitStrategy implements WaitStrategy
     {
         long availableSequence;
         int counter = SPIN_TRIES;
-
+        // 如果当前sequence小于指定的sequence，进行loop循环
         while ((availableSequence = dependentSequence.get()) < sequence)
         {
             counter = applyWaitMethod(barrier, counter);
@@ -51,14 +51,16 @@ public final class YieldingWaitStrategy implements WaitStrategy
     private int applyWaitMethod(final SequenceBarrier barrier, int counter)
         throws AlertException
     {
+        // 策略触发通知
         barrier.checkAlert();
-
+        // 如果相等，则让行，放弃cpu时间片
         if (0 == counter)
         {
             Thread.yield();
         }
         else
         {
+            // 如果不相等，则自旋计数器-1，最多自旋100次就会主动放弃cpu
             --counter;
         }
 

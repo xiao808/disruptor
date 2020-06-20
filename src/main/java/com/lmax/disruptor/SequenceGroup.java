@@ -20,6 +20,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import com.lmax.disruptor.util.Util;
 
 /**
+ * sequence组，可以负载一组sequence，不过大小是可以更改的，通过原子reference进行更新
+ *
  * A {@link Sequence} group that can dynamically have {@link Sequence}s added and removed while being
  * thread safe.
  * <p>

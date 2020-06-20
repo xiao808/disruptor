@@ -28,14 +28,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class WorkProcessor<T>
     implements EventProcessor
 {
+    // 运行状态
     private final AtomicBoolean running = new AtomicBoolean(false);
+    // sequence初始值
     private final Sequence sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+    // sequence存放数组
     private final RingBuffer<T> ringBuffer;
+    // 当前的同步器
     private final SequenceBarrier sequenceBarrier;
+    // consumers
     private final WorkHandler<? super T> workHandler;
+    // 异常处理
     private final ExceptionHandler<? super T> exceptionHandler;
+    //
     private final Sequence workSequence;
-
+    // 放弃操作，将sequence设置为long的最大值，即最后被执行
     private final EventReleaser eventReleaser = new EventReleaser()
     {
         @Override
@@ -44,7 +51,7 @@ public final class WorkProcessor<T>
             sequence.set(Long.MAX_VALUE);
         }
     };
-
+    // 超时处理
     private final TimeoutHandler timeoutHandler;
 
     /**
@@ -69,7 +76,7 @@ public final class WorkProcessor<T>
         this.workHandler = workHandler;
         this.exceptionHandler = exceptionHandler;
         this.workSequence = workSequence;
-
+        // 如果consumer设置了事件出让规则
         if (this.workHandler instanceof EventReleaseAware)
         {
             ((EventReleaseAware) this.workHandler).setEventReleaser(eventReleaser);
@@ -87,6 +94,7 @@ public final class WorkProcessor<T>
     @Override
     public void halt()
     {
+        // 关闭当前processor，并执行通知
         running.set(false);
         sequenceBarrier.alert();
     }
@@ -96,6 +104,7 @@ public final class WorkProcessor<T>
      */
     public void haltLater()
     {
+        // 设置为关闭状态，不可再添加任务，任务执行完成后进行关闭
         running.set(false);
     }
 
@@ -117,14 +126,16 @@ public final class WorkProcessor<T>
         {
             throw new IllegalStateException("Thread is already running");
         }
+        // 清楚告警信息
         sequenceBarrier.clearAlert();
-
+        // 通知等待的线程启动
         notifyStart();
 
         boolean processedSequence = true;
         long cachedAvailableSequence = Long.MIN_VALUE;
         long nextSequence = sequence.get();
         T event = null;
+        // loop循环
         while (true)
         {
             try
@@ -134,40 +145,51 @@ public final class WorkProcessor<T>
                 // typically, this will be true
                 // this prevents the sequence getting too far forward if an exception
                 // is thrown from the WorkHandler
-
+                // 如果前置的事件正常处理，将继续执行一下逻辑，如果前置事件处理异常，将不向下执行，防止向前跳过太多事件
                 if (processedSequence)
                 {
+                    // 检查运行状态
                     if (!running.get())
                     {
+                        // 不在运行状态，执行通知
                         sequenceBarrier.alert();
+                        // 退出执行
                         sequenceBarrier.checkAlert();
                     }
+                    // 不向前计算sequence
                     processedSequence = false;
                     do
                     {
+                        // 寻找下一个需要执行的事件
                         nextSequence = workSequence.get() + 1L;
                         sequence.set(nextSequence - 1L);
                     }
                     while (!workSequence.compareAndSet(nextSequence - 1L, nextSequence));
                 }
-
+                // 如果nextSequence已被跳过，则执行nextSequence
                 if (cachedAvailableSequence >= nextSequence)
                 {
+                    // 获取当前事件
                     event = ringBuffer.get(nextSequence);
+                    // 执行处理逻辑
                     workHandler.onEvent(event);
+                    // 继续向前计算sequence
                     processedSequence = true;
                 }
                 else
                 {
+                    // 等待nextSequence执行
                     cachedAvailableSequence = sequenceBarrier.waitFor(nextSequence);
                 }
             }
             catch (final TimeoutException e)
             {
+                // 超时通知
                 notifyTimeout(sequence.get());
             }
             catch (final AlertException ex)
             {
+                // 当前processor已关闭，跳出事件处理
                 if (!running.get())
                 {
                     break;
@@ -175,12 +197,13 @@ public final class WorkProcessor<T>
             }
             catch (final Throwable ex)
             {
+                // 执行异常，执行异常处理逻辑，当前任务标记为执行完成
                 // handle, mark as processed, unless the exception handler threw an exception
                 exceptionHandler.handleEventException(ex, nextSequence, event);
                 processedSequence = true;
             }
         }
-
+        // 执行完成或者被关闭，发出通知
         notifyShutdown();
 
         running.set(false);
@@ -203,6 +226,7 @@ public final class WorkProcessor<T>
 
     private void notifyStart()
     {
+        // 如果handler需要启动通知
         if (workHandler instanceof LifecycleAware)
         {
             try
@@ -218,6 +242,7 @@ public final class WorkProcessor<T>
 
     private void notifyShutdown()
     {
+        // 如果handler需要停止通知
         if (workHandler instanceof LifecycleAware)
         {
             try

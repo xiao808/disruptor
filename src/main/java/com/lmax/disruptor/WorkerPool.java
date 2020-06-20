@@ -28,9 +28,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class WorkerPool<T>
 {
+    // 启动状态标识
     private final AtomicBoolean started = new AtomicBoolean(false);
+    // sequence初始值
     private final Sequence workSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+    // sequence持有者
     private final RingBuffer<T> ringBuffer;
+    // EventProcessor数组，与handler的数量对应
     // WorkProcessors are created to wrap each of the provided WorkHandlers
     private final WorkProcessor<?>[] workProcessors;
 
@@ -96,7 +100,7 @@ public final class WorkerPool<T>
                 exceptionHandler,
                 workSequence);
         }
-
+        // 将所有的sequence放到同一个组中
         ringBuffer.addGatingSequences(getWorkerSequences());
     }
 
@@ -107,11 +111,13 @@ public final class WorkerPool<T>
      */
     public Sequence[] getWorkerSequences()
     {
+        // 初始化sequence数组，将其与EventProcessor进行关联
         final Sequence[] sequences = new Sequence[workProcessors.length + 1];
         for (int i = 0, size = workProcessors.length; i < size; i++)
         {
             sequences[i] = workProcessors[i].getSequence();
         }
+        // 末尾标识
         sequences[sequences.length - 1] = workSequence;
 
         return sequences;
@@ -130,7 +136,7 @@ public final class WorkerPool<T>
         {
             throw new IllegalStateException("WorkerPool has already been started and cannot be restarted until halted.");
         }
-
+        // 初始化游标，然后启动所有的Processor
         final long cursor = ringBuffer.getCursor();
         workSequence.set(cursor);
 
@@ -148,17 +154,19 @@ public final class WorkerPool<T>
      */
     public void drainAndHalt()
     {
+        // 获取所有的sequence
         Sequence[] workerSequences = getWorkerSequences();
+        // 当前任务已经开始执行，则放弃cpu时间片
         while (ringBuffer.getCursor() > Util.getMinimumSequence(workerSequences))
         {
             Thread.yield();
         }
-
+        // processor依次停止，并执行通知
         for (WorkProcessor<?> processor : workProcessors)
         {
             processor.halt();
         }
-
+        // 状态转换为关闭
         started.set(false);
     }
 

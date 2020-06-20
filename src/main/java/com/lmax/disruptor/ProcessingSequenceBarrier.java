@@ -34,8 +34,11 @@ final class ProcessingSequenceBarrier implements SequenceBarrier
         final Sequence cursorSequence,
         final Sequence[] dependentSequences)
     {
+        // 当前sequencer实例，SingleProducerSequencer或者MultiProducerSequencer
         this.sequencer = sequencer;
+        // EventProcessor的等待策略
         this.waitStrategy = waitStrategy;
+        // 当前任务所在的sequencer
         this.cursorSequence = cursorSequence;
         if (0 == dependentSequences.length)
         {
@@ -51,15 +54,16 @@ final class ProcessingSequenceBarrier implements SequenceBarrier
     public long waitFor(final long sequence)
         throws AlertException, InterruptedException, TimeoutException
     {
+        // 检查是否需要发出通知
         checkAlert();
-
+        // 根据策略执行事件，返回下一个事件的sequence
         long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, dependentSequence, this);
-
+        // 如果下一个执行事件在当前事件之前，返回执行
         if (availableSequence < sequence)
         {
             return availableSequence;
         }
-
+        // 向前查找下一个事件
         return sequencer.getHighestPublishedSequence(sequence, availableSequence);
     }
 

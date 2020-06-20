@@ -10,7 +10,9 @@ import java.util.concurrent.ThreadFactory;
 
 public class BasicExecutor implements Executor
 {
+    // 线程工厂
     private final ThreadFactory factory;
+    // 并发链表队列
     private final Queue<Thread> threads = new ConcurrentLinkedQueue<>();
 
     public BasicExecutor(ThreadFactory factory)
@@ -18,6 +20,7 @@ public class BasicExecutor implements Executor
         this.factory = factory;
     }
 
+    // 执行任务
     @Override
     public void execute(Runnable command)
     {
@@ -40,6 +43,7 @@ public class BasicExecutor implements Executor
             '}';
     }
 
+    // 获取线程状态信息
     private String dumpThreadInfo()
     {
         final StringBuilder sb = new StringBuilder();

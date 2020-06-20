@@ -56,8 +56,11 @@ public final class BatchEventProcessor<T>
         final SequenceBarrier sequenceBarrier,
         final EventHandler<? super T> eventHandler)
     {
+        // 数据生产者
         this.dataProvider = dataProvider;
+        // 数据处理、日志等屏障
         this.sequenceBarrier = sequenceBarrier;
+        // 注册的事件处理器，数据消费者
         this.eventHandler = eventHandler;
 
         if (eventHandler instanceof SequenceReportingEventHandler)

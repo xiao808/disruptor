@@ -18,13 +18,17 @@ package com.lmax.disruptor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * 此EventProcessor不处理事件（没有handler），只追踪数据
+ *
  * No operation version of a {@link EventProcessor} that simply tracks a {@link Sequence}.
  * <p>
  * This is useful in tests or for pre-filling a {@link RingBuffer} from a publisher.
  */
 public final class NoOpEventProcessor implements EventProcessor
 {
+
     private final SequencerFollowingSequence sequence;
+    // 运行标识
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     /**

@@ -68,6 +68,7 @@ targetCompatibility = 1.7
 
 compileJava {
     // Suppress warnings about using Unsafe and sun.misc
+    options.encoding = 'utf-8'
     options.compilerArgs << '-XDignore.symbol.file'
     options.fork = true
     options.debug = true
@@ -86,7 +87,7 @@ compilePerfJava {
 
 javadoc {
     title = 'Disruptor'
-
+    options.encoding = 'utf-8'
     options.addStringOption('XDignore.symbol.file', '-quiet')
     options.author = true
     options.bottom = "<i>Copyright &#169; 2011 - ${Calendar.instance[Calendar.YEAR]} LMAX Ltd. All Rights Reserved.</i>"

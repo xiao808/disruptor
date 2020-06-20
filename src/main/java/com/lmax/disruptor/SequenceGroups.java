@@ -34,21 +34,26 @@ class SequenceGroups
         Sequence[] updatedSequences;
         Sequence[] currentSequences;
 
+        // 使用cas更新sequence数组信息
         do
         {
+            // 获取旧的sequence
             currentSequences = updater.get(holder);
+            // 复制旧的sequence
             updatedSequences = copyOf(currentSequences, currentSequences.length + sequencesToAdd.length);
+            // 获取当前游标
             cursorSequence = cursor.getCursor();
-
+            // 将新的sequence添加到数组中
             int index = currentSequences.length;
             for (Sequence sequence : sequencesToAdd)
             {
+                // 保存当前游标信息
                 sequence.set(cursorSequence);
                 updatedSequences[index++] = sequence;
             }
         }
         while (!updater.compareAndSet(holder, currentSequences, updatedSequences));
-
+        // 更新游标信息，cas操作
         cursorSequence = cursor.getCursor();
         for (Sequence sequence : sequencesToAdd)
         {
@@ -64,11 +69,12 @@ class SequenceGroups
         int numToRemove;
         Sequence[] oldSequences;
         Sequence[] newSequences;
-
+        // 使用cas更新barrier sequence数组
         do
         {
+            // 获取原有的sequence数组
             oldSequences = sequenceUpdater.get(holder);
-
+            // 对比两个数组，找出公有的元素数目
             numToRemove = countMatching(oldSequences, sequence);
 
             if (0 == numToRemove)
@@ -78,7 +84,7 @@ class SequenceGroups
 
             final int oldSize = oldSequences.length;
             newSequences = new Sequence[oldSize - numToRemove];
-
+            // 拷贝数组，跳过sequence，保持原有的数组顺序
             for (int i = 0, pos = 0; i < oldSize; i++)
             {
                 final Sequence testSequence = oldSequences[i];
@@ -89,7 +95,7 @@ class SequenceGroups
             }
         }
         while (!sequenceUpdater.compareAndSet(holder, oldSequences, newSequences));
-
+        // 移除的元素个数
         return numToRemove != 0;
     }
 

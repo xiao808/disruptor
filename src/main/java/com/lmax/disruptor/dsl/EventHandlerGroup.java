@@ -24,6 +24,9 @@ import com.lmax.disruptor.WorkHandler;
 import java.util.Arrays;
 
 /**
+ * 除了add方法以外，其它方法都是委托给disruptor实现，在某种程度上可以理解为disruptor的一个子类
+ * 且disruptor使用dsl构建，其方法返回的是EventHandlerGroup，有点类似构建者模式
+ *
  * A group of {@link EventProcessor}s used as part of the {@link Disruptor}.
  *
  * @param <T> the type of entry used by the event processors.
@@ -52,6 +55,7 @@ public class EventHandlerGroup<T>
      */
     public EventHandlerGroup<T> and(final EventHandlerGroup<T> otherHandlerGroup)
     {
+        // 合并两个消费组handler
         final Sequence[] combinedSequences = new Sequence[this.sequences.length + otherHandlerGroup.sequences.length];
         System.arraycopy(this.sequences, 0, combinedSequences, 0, this.sequences.length);
         System.arraycopy(
@@ -68,13 +72,15 @@ public class EventHandlerGroup<T>
      */
     public EventHandlerGroup<T> and(final EventProcessor... processors)
     {
+        // 合并两个EventProcessor
         Sequence[] combinedSequences = new Sequence[sequences.length + processors.length];
-
+        // 遍历processors，添加到consumer仓库，建立映射信息，关联sequence对象
         for (int i = 0; i < processors.length; i++)
         {
             consumerRepository.add(processors[i]);
             combinedSequences[i] = processors[i].getSequence();
         }
+        // 合并数组
         System.arraycopy(sequences, 0, combinedSequences, processors.length, sequences.length);
 
         return new EventHandlerGroup<>(disruptor, consumerRepository, combinedSequences);
@@ -134,6 +140,8 @@ public class EventHandlerGroup<T>
     }
 
     /**
+     * 委托给disruptor实现
+     *
      * <p>Set up batch handlers to handle events from the ring buffer. These handlers will only process events
      * after every {@link EventProcessor} in this group has processed the event.</p>
      *
@@ -152,6 +160,8 @@ public class EventHandlerGroup<T>
     }
 
     /**
+     * 委托给disruptor实现
+     *
      * <p>Set up custom event processors to handle events from the ring buffer. The Disruptor will
      * automatically start these processors when {@link Disruptor#start()} is called.</p>
      *
@@ -170,6 +180,8 @@ public class EventHandlerGroup<T>
     }
 
     /**
+     * 委托给disruptor实现
+     *
      * <p>Set up a worker pool to handle events from the ring buffer. The worker pool will only process events
      * after every {@link EventProcessor} in this group has processed the event. Each event will be processed
      * by one of the work handler instances.</p>
@@ -189,6 +201,8 @@ public class EventHandlerGroup<T>
     }
 
     /**
+     * 委托给disruptor实现
+     *
      * Create a dependency barrier for the processors in this group.
      * This allows custom event processors to have dependencies on
      * {@link com.lmax.disruptor.BatchEventProcessor}s created by the disruptor.

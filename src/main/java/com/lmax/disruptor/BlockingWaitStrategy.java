@@ -31,10 +31,13 @@ public final class BlockingWaitStrategy implements WaitStrategy
         throws AlertException, InterruptedException
     {
         long availableSequence;
+        // 如果当前sequence小于指定的sequence，进行loop循环
         if (cursorSequence.get() < sequence)
         {
+            // 同步锁
             synchronized (mutex)
             {
+                // 如果当前sequence小于指定的sequence，进入等待状态，触发相应的等待策略消息通知
                 while (cursorSequence.get() < sequence)
                 {
                     barrier.checkAlert();
@@ -42,7 +45,7 @@ public final class BlockingWaitStrategy implements WaitStrategy
                 }
             }
         }
-
+        // 如果当前sequence小于指定的sequence，进行loop循环，触发相应的等待策略消息通知
         while ((availableSequence = dependentSequence.get()) < sequence)
         {
             barrier.checkAlert();

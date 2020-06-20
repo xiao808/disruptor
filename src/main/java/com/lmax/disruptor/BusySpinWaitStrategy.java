@@ -32,7 +32,7 @@ public final class BusySpinWaitStrategy implements WaitStrategy
         throws AlertException, InterruptedException
     {
         long availableSequence;
-
+        // 如果当前sequence小于指定的sequence，进行loop循环，无限自旋知道sequence同步
         while ((availableSequence = dependentSequence.get()) < sequence)
         {
             barrier.checkAlert();

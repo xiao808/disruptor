@@ -30,10 +30,13 @@ import java.util.concurrent.locks.LockSupport;
  */
 public final class SleepingWaitStrategy implements WaitStrategy
 {
+    // 默认重试次数
     private static final int DEFAULT_RETRIES = 200;
+    // 默认睡眠时间
     private static final long DEFAULT_SLEEP = 100;
-
+    // 重试次数
     private final int retries;
+    // 睡眠时间
     private final long sleepTimeNs;
 
     public SleepingWaitStrategy()
@@ -59,9 +62,10 @@ public final class SleepingWaitStrategy implements WaitStrategy
     {
         long availableSequence;
         int counter = retries;
-
+        // 循环等待当前事件完成
         while ((availableSequence = dependentSequence.get()) < sequence)
         {
+            // 如果未完成，则出让cpu时间片，并计数，计数次数达到设定值则进入睡眠
             counter = applyWaitMethod(barrier, counter);
         }
 
@@ -76,19 +80,22 @@ public final class SleepingWaitStrategy implements WaitStrategy
     private int applyWaitMethod(final SequenceBarrier barrier, int counter)
         throws AlertException
     {
+        // 发出告警信息
         barrier.checkAlert();
-
         if (counter > 100)
         {
+            // 如果剩余重试次数大于100，重试次数-1
             --counter;
         }
         else if (counter > 0)
         {
+            // 如果重试次数大于0小于100，让出cpu事件
             --counter;
             Thread.yield();
         }
         else
         {
+            // 如果重试次数小于等于0，进入睡眠状态
             LockSupport.parkNanos(sleepTimeNs);
         }
 

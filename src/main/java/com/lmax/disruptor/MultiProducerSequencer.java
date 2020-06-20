@@ -40,8 +40,11 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
     // availableBuffer tracks the state of each ringbuffer slot
     // see below for more details on the approach
+    // 位置标记，已分配的元素位置会被打上标记
     private final int[] availableBuffer;
+    // 用于下标取模，获取元素位置
     private final int indexMask;
+    // 下标偏移量
     private final int indexShift;
 
     /**
@@ -55,7 +58,9 @@ public final class MultiProducerSequencer extends AbstractSequencer
         super(bufferSize, waitStrategy);
         availableBuffer = new int[bufferSize];
         indexMask = bufferSize - 1;
+        // 使用bufferSize以2为底的对数
         indexShift = Util.log2(bufferSize);
+        // 初始化已分配元素标记
         initialiseAvailableBuffer();
     }
 
@@ -70,14 +75,20 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
     private boolean hasAvailableCapacity(Sequence[] gatingSequences, final int requiredCapacity, long cursorValue)
     {
+        // 分配空间后的下标
         long wrapPoint = (cursorValue + requiredCapacity) - bufferSize;
+        // 上次缓存的元素下标
         long cachedGatingSequence = gatingSequenceCache.get();
-
+        // 由于数组是环形，分配指定空间大小之后
+        // 1: 新的下标回到了数组的头部，且超过了上一次的读取地址，则如果分配了空间之后，有元素会被覆盖，即没有足够的空间
+        // 2: 上一次的缓存地址大于下一个元素的地址，可能使用claim跳过了某些元素
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > cursorValue)
         {
+            // 获取当前元素之前所有未读元素的最小下标
             long minSequence = Util.getMinimumSequence(gatingSequences, cursorValue);
+            // 缓存该未读元素位置
             gatingSequenceCache.set(minSequence);
-
+            // 如果要分配的下标大于最小的未读元素下标，返回false，无足够空间
             if (wrapPoint > minSequence)
             {
                 return false;
@@ -102,6 +113,7 @@ public final class MultiProducerSequencer extends AbstractSequencer
     @Override
     public long next()
     {
+        // 获取下一个元素的位置
         return next(1);
     }
 
@@ -121,31 +133,38 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
         do
         {
+            // 获取当前元素下标
             current = cursor.get();
+            // 待分配的元素下标
             next = current + n;
-
+            // 待分配的元素
             long wrapPoint = next - bufferSize;
+            // 上次读取的缓存元素
             long cachedGatingSequence = gatingSequenceCache.get();
-
+            // 由于数组是环形，分配指定空间大小之后
+            // 1: 新的下标回到了数组的头部，且超过了上一次的读取地址，则如果分配了空间之后，有元素会被覆盖，即没有足够的空间
+            // 2: 上一次的缓存地址大于下一个元素的地址，可能使用claim跳过了某些元素
             if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current)
             {
+                // 当前元素之前的所有元素的最小下标
                 long gatingSequence = Util.getMinimumSequence(gatingSequences, current);
-
+                // 如果分配之后的元素位置中存在未读元素，则等待执行完成
                 if (wrapPoint > gatingSequence)
                 {
                     LockSupport.parkNanos(1); // TODO, should we spin based on the wait strategy?
                     continue;
                 }
-
+                // 缓存当前的位置，尽快读取
                 gatingSequenceCache.set(gatingSequence);
             }
             else if (cursor.compareAndSet(current, next))
             {
+                // 如果下标设置成功，则返回，否则循环执行以上逻辑
                 break;
             }
         }
         while (true);
-
+        // 返回元素下标
         return next;
     }
 
@@ -155,6 +174,7 @@ public final class MultiProducerSequencer extends AbstractSequencer
     @Override
     public long tryNext() throws InsufficientCapacityException
     {
+        // 尝试获取下一个元素
         return tryNext(1);
     }
 
@@ -174,13 +194,16 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
         do
         {
+            // 获取当前下标
             current = cursor.get();
+            // 待获取的元素下标
             next = current + n;
-
+            // 如果没有足够的空间，抛出异常
             if (!hasAvailableCapacity(gatingSequences, n, current))
             {
                 throw InsufficientCapacityException.INSTANCE;
             }
+            // 之后获取成功，否则循环执行以上逻辑
         }
         while (!cursor.compareAndSet(current, next));
 
@@ -193,8 +216,11 @@ public final class MultiProducerSequencer extends AbstractSequencer
     @Override
     public long remainingCapacity()
     {
+        // 已读取的元素下标的最小位置
         long consumed = Util.getMinimumSequence(gatingSequences, cursor.get());
+        // 已写入的元素位置
         long produced = cursor.get();
+        // bufferSize减去未读元素的最大连续集合的大小，即为剩余的元素空间
         return getBufferSize() - (produced - consumed);
     }
 
@@ -214,7 +240,9 @@ public final class MultiProducerSequencer extends AbstractSequencer
     @Override
     public void publish(final long sequence)
     {
+        // 将当前元素位置设置为可用
         setAvailable(sequence);
+        // 执行等待通知
         waitStrategy.signalAllWhenBlocking();
     }
 
@@ -257,7 +285,9 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
     private void setAvailableBufferValue(int index, int flag)
     {
+        // 计算内存地址
         long bufferAddress = (index * SCALE) + BASE;
+        // 分配内存空间
         UNSAFE.putOrderedInt(availableBuffer, bufferAddress, flag);
     }
 
@@ -267,15 +297,20 @@ public final class MultiProducerSequencer extends AbstractSequencer
     @Override
     public boolean isAvailable(long sequence)
     {
+        // 当前元素下标
         int index = calculateIndex(sequence);
+        // 元素位置可用标识
         int flag = calculateAvailabilityFlag(sequence);
+        // 该元素的内存地址
         long bufferAddress = (index * SCALE) + BASE;
+        // 查看当前元素的标识是否为可用
         return UNSAFE.getIntVolatile(availableBuffer, bufferAddress) == flag;
     }
 
     @Override
     public long getHighestPublishedSequence(long lowerBound, long availableSequence)
     {
+        // 在指定范围内获取已发布的元素位置
         for (long sequence = lowerBound; sequence <= availableSequence; sequence++)
         {
             if (!isAvailable(sequence))
@@ -289,11 +324,13 @@ public final class MultiProducerSequencer extends AbstractSequencer
 
     private int calculateAvailabilityFlag(final long sequence)
     {
+        // 计算元素可用标识
         return (int) (sequence >>> indexShift);
     }
 
     private int calculateIndex(final long sequence)
     {
+        // 计算数组下标
         return ((int) sequence) & indexMask;
     }
 }

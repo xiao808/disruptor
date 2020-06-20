@@ -4,6 +4,10 @@ import com.lmax.disruptor.*;
 
 import java.util.concurrent.Executor;
 
+/**
+ * EventProcessor、EventHandler、SequenceBarrier的包装类，可用于追踪三种对象的状态
+ *
+ */
 class WorkerPoolInfo<T> implements ConsumerInfo
 {
     private final WorkerPool<T> workerPool;

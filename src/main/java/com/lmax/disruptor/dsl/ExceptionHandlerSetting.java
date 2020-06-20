@@ -21,6 +21,8 @@ import com.lmax.disruptor.EventProcessor;
 import com.lmax.disruptor.ExceptionHandler;
 
 /**
+ * 辅助类，用于为event handler设置exception处理
+ *
  * A support class used as part of setting an exception handler for a specific event handler.
  * For example:
  * <pre><code>disruptorWizard.handleExceptionsIn(eventHandler).with(exceptionHandler);</code></pre>
@@ -48,10 +50,14 @@ public class ExceptionHandlerSetting<T>
     @SuppressWarnings("unchecked")
     public void with(ExceptionHandler<? super T> exceptionHandler)
     {
+        // 获取EventHandler对应的EventProcessor
         final EventProcessor eventProcessor = consumerRepository.getEventProcessorFor(eventHandler);
         if (eventProcessor instanceof BatchEventProcessor)
         {
+            // 只有BatchEventProcessor才支持异常处理
+            // 给EventProcessor设置异常处理
             ((BatchEventProcessor<T>) eventProcessor).setExceptionHandler(exceptionHandler);
+            // 获取到当前sequence对应的barrier，并发出通知消息
             consumerRepository.getBarrierFor(eventHandler).alert();
         }
         else

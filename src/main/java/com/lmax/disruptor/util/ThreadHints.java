@@ -22,6 +22,8 @@ import java.lang.invoke.MethodHandles;
 import static java.lang.invoke.MethodType.methodType;
 
 /**
+ * 用于运行时性能优化（不太懂），如果jdk不支持则什么也不会发生
+ *
  * This class captures possible hints that may be used by some
  * runtimes to improve code performance. It is intended to capture hinting
  * behaviours that are implemented in or anticipated to be spec'ed under the

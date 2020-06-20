@@ -40,6 +40,7 @@ public final class AggregateEventHandler<T>
     public void onEvent(final T event, final long sequence, final boolean endOfBatch)
         throws Exception
     {
+        // 所有的handler依次处理事件
         for (final EventHandler<T> eventHandler : eventHandlers)
         {
             eventHandler.onEvent(event, sequence, endOfBatch);
@@ -49,6 +50,7 @@ public final class AggregateEventHandler<T>
     @Override
     public void onStart()
     {
+        // 启动所有的handler
         for (final EventHandler<T> eventHandler : eventHandlers)
         {
             if (eventHandler instanceof LifecycleAware)
@@ -61,6 +63,7 @@ public final class AggregateEventHandler<T>
     @Override
     public void onShutdown()
     {
+        // 关闭所有的handler
         for (final EventHandler<T> eventHandler : eventHandlers)
         {
             if (eventHandler instanceof LifecycleAware)

@@ -294,7 +294,9 @@ public class Disruptor<T>
     @SuppressWarnings("varargs")
     public final EventHandlerGroup<T> after(final EventHandler<T>... handlers)
     {
+        // 创建新的sequence
         final Sequence[] sequences = new Sequence[handlers.length];
+        // 获取所有handler初始化时分配的sequence
         for (int i = 0, handlersLength = handlers.length; i < handlersLength; i++)
         {
             sequences[i] = consumerRepository.getSequenceFor(handlers[i]);
@@ -538,29 +540,32 @@ public class Disruptor<T>
         final Sequence[] barrierSequences,
         final EventHandler<? super T>[] eventHandlers)
     {
+        // 检查事件处理handler
         checkNotStarted();
-
+        // 追踪RingBuffer和EventHandler的进度，还会通过缓存行填充减少伪内存共享造成的性能损失
         final Sequence[] processorSequences = new Sequence[eventHandlers.length];
+        // 用于追踪消息发布者(生产者)的消息指针，以及各个EventHandler(消费者)的数据处理情况
         final SequenceBarrier barrier = ringBuffer.newBarrier(barrierSequences);
-
+        // 遍历handlers
         for (int i = 0, eventHandlersLength = eventHandlers.length; i < eventHandlersLength; i++)
         {
             final EventHandler<? super T> eventHandler = eventHandlers[i];
-
+            //
             final BatchEventProcessor<T> batchEventProcessor =
                 new BatchEventProcessor<>(ringBuffer, barrier, eventHandler);
-
+            // 异常处理
             if (exceptionHandler != null)
             {
                 batchEventProcessor.setExceptionHandler(exceptionHandler);
             }
-
+            // 建立processor与handle之间的映射关系
             consumerRepository.add(batchEventProcessor, eventHandler, barrier);
+            // 关联sequence对象
             processorSequences[i] = batchEventProcessor.getSequence();
         }
-
+        // 更新barrier sequence数组信息、processor sequence数组信息
         updateGatingSequencesForNextInChain(barrierSequences, processorSequences);
-
+        // 返回事件处理组
         return new EventHandlerGroup<>(this, consumerRepository, processorSequences);
     }
 
@@ -568,11 +573,14 @@ public class Disruptor<T>
     {
         if (processorSequences.length > 0)
         {
+            // 合并旧的数组与新的sequence数组，更新每个sequence的游标信息
             ringBuffer.addGatingSequences(processorSequences);
+            // 移除barrier sequence
             for (final Sequence barrierSequence : barrierSequences)
             {
                 ringBuffer.removeGatingSequence(barrierSequence);
             }
+            // 标记processor为使用状态
             consumerRepository.unMarkEventProcessorsAsEndOfChain(barrierSequences);
         }
     }
@@ -592,14 +600,16 @@ public class Disruptor<T>
     EventHandlerGroup<T> createWorkerPool(
         final Sequence[] barrierSequences, final WorkHandler<? super T>[] workHandlers)
     {
+        // 获取屏障
         final SequenceBarrier sequenceBarrier = ringBuffer.newBarrier(barrierSequences);
+        // 创建WorkPool对象，实际存储是WorkProcessor数组
         final WorkerPool<T> workerPool = new WorkerPool<>(ringBuffer, sequenceBarrier, exceptionHandler, workHandlers);
 
-
+        // 建立WorkPool与barrier之间的映射关系
         consumerRepository.add(workerPool, sequenceBarrier);
-
+        // 关联sequence对象
         final Sequence[] workerSequences = workerPool.getWorkerSequences();
-
+        // 更新barrier sequence数组信息、processor sequence数组信息
         updateGatingSequencesForNextInChain(barrierSequences, workerSequences);
 
         return new EventHandlerGroup<>(this, consumerRepository, workerSequences);

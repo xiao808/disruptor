@@ -27,7 +27,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class LiteBlockingWaitStrategy implements WaitStrategy
 {
+    /**
+     * 同步锁
+     */
     private final Object mutex = new Object();
+    /**
+     * 是否需要进行signal唤醒
+     */
     private final AtomicBoolean signalNeeded = new AtomicBoolean(false);
 
     @Override
@@ -37,40 +43,48 @@ public final class LiteBlockingWaitStrategy implements WaitStrategy
         long availableSequence;
         if (cursorSequence.get() < sequence)
         {
+            // 如果小于sequence index，需要进行等待
             synchronized (mutex)
             {
+                // 重复检测状态直到当前index大于指定的sequence，即指定的任务完成
                 do
                 {
+                    // 转换提醒状态
                     signalNeeded.getAndSet(true);
-
+                    // 再次检测，如果大于指定的sequence index，则跳过
                     if (cursorSequence.get() >= sequence)
                     {
                         break;
                     }
-
+                    // 发出警告信息
                     barrier.checkAlert();
+                    // 进入等待状态
                     mutex.wait();
                 }
                 while (cursorSequence.get() < sequence);
             }
         }
-
+        // 依次检测sequence，直到当前sequence完成
         while ((availableSequence = dependentSequence.get()) < sequence)
         {
+            // 发出告警信息
             barrier.checkAlert();
+            // 线程自旋
             ThreadHints.onSpinWait();
         }
-
+        // 返回可用的sequence
         return availableSequence;
     }
 
     @Override
     public void signalAllWhenBlocking()
     {
+        // 转换通知状态
         if (signalNeeded.getAndSet(false))
         {
             synchronized (mutex)
             {
+                // 唤醒所有的等待线程
                 mutex.notifyAll();
             }
         }

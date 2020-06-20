@@ -5,6 +5,11 @@ import com.lmax.disruptor.SequenceBarrier;
 
 import java.util.concurrent.Executor;
 
+/**
+ * 子类有WorkerPoolInfo、EventProcessorInfo
+ * WorkPool拥有一组handler，EventProcessor仅一个EventHandler
+ *
+ */
 interface ConsumerInfo
 {
     Sequence[] getSequences();

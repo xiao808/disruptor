@@ -27,12 +27,16 @@ import com.lmax.disruptor.util.Util;
  */
 public abstract class AbstractSequencer implements Sequencer
 {
+    // sequence原子更新器
     private static final AtomicReferenceFieldUpdater<AbstractSequencer, Sequence[]> SEQUENCE_UPDATER =
         AtomicReferenceFieldUpdater.newUpdater(AbstractSequencer.class, Sequence[].class, "gatingSequences");
-
+    // ringBuffer的大小
     protected final int bufferSize;
+    // 等待策略
     protected final WaitStrategy waitStrategy;
+    // 当前的index
     protected final Sequence cursor = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+    // 使用内存屏障，数组前后有（16/32个元素填充）共128bit
     protected volatile Sequence[] gatingSequences = new Sequence[0];
 
     /**

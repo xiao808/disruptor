@@ -43,6 +43,12 @@ class RhsPadding extends Value
  * <p>Also attempts to be more efficient with regards to false
  * sharing by adding padding around the volatile field.
  */
+// 在volatile field前后添加数据填充，消除伪内存共享造成的性能损失
+// long是8byte，在前面填充7个long属性，一共64byte，和cpu cache line大小一致
+// 填充行的数据只是为了伪共享造成的性能损失
+// 前后各填充7个long，可以保证Value.value一定是和其它七个填充元素在同一个cpu cache line上
+// 假设上一个cache line没有数据缓存，那么value将会在此cache ling的最后一个元素，其余的七个元素是不会发生改变的(自己填充的，且自己不会去改变)
+// 假设上一个cache line有至少一个数据缓存，那么value将会到下一个cache line，而value的左右仍然是填充的数据(即不会发生改变)
 public class Sequence extends RhsPadding
 {
     static final long INITIAL_VALUE = -1L;
@@ -51,9 +57,11 @@ public class Sequence extends RhsPadding
 
     static
     {
+        // 通过unsafe获取内存地址
         UNSAFE = Util.getUnsafe();
         try
         {
+            // 实际的值存储的地址
             VALUE_OFFSET = UNSAFE.objectFieldOffset(Value.class.getDeclaredField("value"));
         }
         catch (final Exception e)

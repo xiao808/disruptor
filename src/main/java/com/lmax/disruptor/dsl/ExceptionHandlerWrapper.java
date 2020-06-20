@@ -3,6 +3,10 @@ package com.lmax.disruptor.dsl;
 import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.FatalExceptionHandler;
 
+/**
+ * ExceptionHandler的子类，所有动作委托给delegate，若不手动指定则使用默认的FatalExceptionHandler
+ * @param <T>
+ */
 public class ExceptionHandlerWrapper<T> implements ExceptionHandler<T>
 {
     private ExceptionHandler<? super T> delegate = new FatalExceptionHandler();

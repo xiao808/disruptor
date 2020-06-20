@@ -20,6 +20,8 @@ import java.util.Arrays;
 import com.lmax.disruptor.util.Util;
 
 /**
+ * 此sequence拥有固定大小的子sequence
+ *
  * Hides a group of Sequences behind a single Sequence
  */
 public final class FixedSequenceGroup extends Sequence

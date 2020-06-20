@@ -37,6 +37,7 @@ class ConsumerRepository<T> implements Iterable<ConsumerInfo>
         final EventHandler<? super T> handler,
         final SequenceBarrier barrier)
     {
+        // 信息包装类，合并起来构成完成的信息
         final EventProcessorInfo<T> consumerInfo = new EventProcessorInfo<>(eventprocessor, handler, barrier);
         eventProcessorInfoByEventHandler.put(handler, consumerInfo);
         eventProcessorInfoBySequence.put(eventprocessor.getSequence(), consumerInfo);
@@ -118,6 +119,7 @@ class ConsumerRepository<T> implements Iterable<ConsumerInfo>
 
     public void unMarkEventProcessorsAsEndOfChain(final Sequence... barrierEventProcessors)
     {
+        // 标记processor的状态为正在使用
         for (Sequence barrierEventProcessor : barrierEventProcessors)
         {
             getEventProcessorInfo(barrierEventProcessor).markAsUsedInBarrier();

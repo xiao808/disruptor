@@ -29,6 +29,8 @@ import java.security.PrivilegedExceptionAction;
 public final class Util
 {
     /**
+     * 获取一个大于等于x的正整数(必须是2的n次方)
+     *
      * Calculate the next power of 2, greater than or equal to x.<p>
      * From Hacker's Delight, Chapter 3, Harry S. Warren Jr.
      *
@@ -41,6 +43,8 @@ public final class Util
     }
 
     /**
+     * 贪心的方式获取数组的最小值
+     *
      * Get the minimum sequence from an array of {@link com.lmax.disruptor.Sequence}s.
      *
      * @param sequences to compare.
@@ -52,6 +56,8 @@ public final class Util
     }
 
     /**
+     * 寻找数组中小于或等于minimum的整数
+     *
      * Get the minimum sequence from an array of {@link com.lmax.disruptor.Sequence}s.
      *
      * @param sequences to compare.
@@ -72,6 +78,8 @@ public final class Util
     }
 
     /**
+     * 获取EventProcessor数组的每个元素所关联的sequence
+     *
      * Get an array of {@link Sequence}s for the passed {@link EventProcessor}s
      *
      * @param processors for which to get the sequences
@@ -94,6 +102,7 @@ public final class Util
     {
         try
         {
+            // 获取unsafe
             final PrivilegedExceptionAction<Unsafe> action = new PrivilegedExceptionAction<Unsafe>()
             {
                 public Unsafe run() throws Exception
@@ -124,6 +133,8 @@ public final class Util
     }
 
     /**
+     * 计算i以2为底的对数
+     *
      * Calculate the log base 2 of the supplied integer, essentially reports the location
      * of the highest bit.
      *
@@ -140,6 +151,14 @@ public final class Util
         return r;
     }
 
+    /**
+     * 等待指定时间
+     *
+     * @param mutex 锁对象
+     * @param timeoutNanos 超时时间，纳秒
+     * @return 时间等待偏差
+     * @throws InterruptedException 可被中断
+     */
     public static long awaitNanos(Object mutex, long timeoutNanos) throws InterruptedException
     {
         long millis = timeoutNanos / 1_000_000;
